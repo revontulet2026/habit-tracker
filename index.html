@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Pro Habit OS - Master v78</title>
+    
+    <script>
+        (function() {
+            var canvas = document.createElement('canvas');
+            canvas.width = 180;
+            canvas.height = 180;
+            var ctx = canvas.getContext('2d');
+
+            // Background (Deep Black)
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, 180, 180);
+
+            // Muted Rings (Thicker for visibility)
+            function drawRing(r) {
+                ctx.beginPath();
+                ctx.arc(90, 90, r, 0, 2 * Math.PI);
+                ctx.strokeStyle = '#334155';
+                ctx.lineWidth = 5; 
+                ctx.setLineDash([8, 8]); 
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+            drawRing(30);
+            drawRing(52);
+            drawRing(74);
+
+            // Central Core
+            ctx.beginPath();
+            ctx.arc(90, 90, 14, 0, 2 * Math.PI);
+            ctx.fillStyle = '#60a5fa'; 
+            ctx.fill();
+
+            // Orbiting Dots
+            function drawDot(angle, r, color) {
+                var rad = angle * (Math.PI / 180);
+                var x = 90 + r * Math.cos(rad);
+                var y = 90 + r * Math.sin(rad);
+                ctx.beginPath();
+                ctx.arc(x, y, 9, 0, 2 * Math.PI);
+                ctx.fillStyle = color;
+                ctx.fill();
+            }
+            drawDot(45, 30, '#4ade80');  
+            drawDot(160, 52, '#a78bfa'); 
+            drawDot(290, 74, '#3b82f6'); 
+
+            var url = canvas.toDataURL('image/png');
+            var link = document.createElement('link');
+            link.rel = 'apple-touch-icon';
+            link.href = url;
+            document.head.appendChild(link);
+            
+            var link2 = document.createElement('link');
+            link2.rel = 'icon';
+            link2.type = 'image/png';
+            link2.href = url;
+            document.head.appendChild(link2);
+        })();
+    </script>
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
+
+    <style>
+        :root {
+            --bg: #f8fafc; --card: #ffffff; --text: #1e293b; --subtext: #64748b;
+            --primary: #3b82f6; --success: #15803d; --light-success: #22c55e; --planned: #dbeafe; --accent: #8b5cf6; --border: #e2e8f0; --danger: #ef4444;
+        }
+        [data-theme="dark"] {
+            --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --subtext: #94a3b8;
+            --primary: #60a5fa; --success: #10b981; --light-success: #34d399; --planned: #1e3a8a; --accent: #a78bfa; --border: #334155;
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); padding: env(safe-area-inset-top) 8px env(safe-area-inset-bottom); margin: 0; -webkit-tap-highlight-color: transparent; }
+        .container { max-width: 900px; margin: 0 auto; padding: 5px 0; }
+        
+        .master-bar { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; padding: 22px; border-radius: 24px; margin-bottom: 20px; box-shadow: 0 10px 20px rgba(59,130,246,0.15); }
+        .score-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; text-align: center; }
+        .score-val { font-size: 1.7rem; font-weight: 900; display: block; }
+        .score-box small { font-size: 0.7rem; letter-spacing: 0.05em; text-transform: uppercase; font-weight: 700; opacity: 0.9; }
+
+        .search-bar { width: 100%; padding: 12px 16px; border-radius: 16px; border: 1px solid var(--border); background: var(--card); color: var(--text); margin-bottom: 15px; box-sizing: border-box; font-size: 16px; }
+        .nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .nav h3 { font-size: 1.15rem; margin: 0; font-weight: 800; }
+        
+        .btn { background: var(--primary); color: white; border: none; padding: 14px 20px; border-radius: 14px; cursor: pointer; font-weight: 700; font-size: 1rem; }
+        .btn-ghost { background: var(--card); color: var(--text); border: 1px solid var(--border); padding: 12px 14px; border-radius: 14px; cursor: pointer; font-size: 0.85rem; font-weight: 600; }
+
+        .habit-item { background: var(--card); border: 1px solid var(--border); border-radius: 24px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.04); }
+        .habit-summary { padding: 15px 18px; display: flex; justify-content: space-between; align-items: center; }
+        .habit-detail { display: none; padding: 0 10px 20px; border-top: 1px solid var(--border); }
+        .expanded .habit-detail { display: block; }
+
+        .calendar-wrapper { display: grid; grid-template-columns: 22px repeat(7, 1fr); gap: 5px; margin-top: 15px; }
+        .day-label { font-size: 0.65rem; text-align: center; color: var(--subtext); font-weight: 800; padding-bottom: 5px; }
+        .cal-day { min-height: 72px; border: 1px solid var(--border); border-radius: 10px; display: flex; flex-direction: column; background: var(--card); overflow: hidden; position: relative; transition: 0.2s; }
+        .tile-header { height: 26px; display: flex; align-items: center; justify-content: space-between; padding: 0 4px; font-size: 0.8rem; font-weight: 900; pointer-events: none; }
+        .tile-body { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; pointer-events: none; }
+        
+        .add-note-btn { pointer-events: auto; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--accent); font-weight: 900; position: absolute; top: 0; right: 0; z-index: 10; background: rgba(0,0,0,0.02); border-bottom-left-radius: 8px; }
+        .note-indicator { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; display: inline-block; position: absolute; top: 4px; left: 4px; border: 1px solid white; }
+
+        .cal-day.planned { background: var(--planned); border-color: var(--primary); }
+        .cal-day.done { background: var(--light-success) !important; border-color: var(--light-success) !important; color: white !important; }
+        
+        .cal-day.today { border: 3px solid var(--danger) !important; }
+
+        .donut-group { display: flex; gap: 10px; }
+        .donut-container { position: relative; width: 62px; height: 62px; }
+        .donut-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.75rem; font-weight: 900; text-align: center; line-height: 1; }
+        .donut-svg { transform: rotate(-90deg); width: 62px; height: 62px; display: block; overflow: visible; }
+
+        .trend-box { margin: 15px 0 5px; padding: 15px; background: rgba(0,0,0,0.02); border-radius: 18px; border: 1px solid var(--border); }
+        .trend-header { font-size: 0.65rem; font-weight: 800; color: var(--subtext); text-transform: uppercase; margin-bottom: 12px; letter-spacing: 0.05em; display: flex; justify-content: space-between; }
+
+        .notes-area { margin-top: 15px; padding: 18px; background: var(--bg); border-radius: 16px; border: 1px solid var(--border); display: none; margin-bottom: 10px; }
+        textarea { width: 100%; border: 1px solid var(--border); border-radius: 12px; padding: 14px; font-size: 16px; min-height: 120px; box-sizing: border-box; background: var(--card); color: var(--text); }
+        .action-bar { display: flex; gap: 10px; margin-top: 20px; border-top: 1px solid var(--border); padding: 15px 0 10px; }
+
+        .sync-footer { margin-top: 30px; border-top: 1px solid var(--border); padding: 25px 0 60px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        #syncStatus { grid-column: span 2; font-size: 0.85rem; color: var(--subtext); text-align: center; margin-bottom: 8px; font-weight: 600; }
+    </style>
+</head>
+<body data-theme="light">
+<div class="container">
+    <div class="master-bar">
+        <div class="score-row">
+            <div class="score-box"><small id="monthScoreLabel">Month</small><span id="monthScore" class="score-val">0%</span></div>
+            <div class="score-box" onclick="cycleQuarterWindow()"><small id="quarterLabel">Rolling 90D</small><span id="quarterScore" class="score-val">0%</span></div>
+            <div class="score-box"><small id="yearScoreLabel">Year</small><span id="yearScore" class="score-val">0%</span></div>
+        </div>
+    </div>
+    <input type="text" class="search-bar" id="globalSearch" placeholder="🔍 Search daily notes..." oninput="runSearch()">
+    <div id="searchResults" style="background:var(--accent); color:white; padding:15px; border-radius:12px; margin-bottom:20px; display:none; font-size:0.9rem;"></div>
+    <div class="nav">
+        <button class="btn" onclick="changeMonth(-1)">◀</button>
+        <div style="display:flex; flex-direction:column; align-items:center;">
+            <h3 id="monthLabel">Month</h3>
+            <button class="btn-ghost" style="margin-top:12px; padding:6px 16px; font-size:0.75rem; font-weight:800; border-radius:12px; border:1px solid #64748b; color:#64748b; background:transparent;" onclick="goToToday()">TODAY</button>
+        </div>
+        <button class="btn" onclick="changeMonth(1)">▶</button>
+    </div>
+    <div style="display:flex; gap:10px; margin-bottom:20px;">
+        <button class="btn-ghost" style="flex:1" onclick="toggleTheme()">🌓 Theme</button>
+        <button class="btn" style="flex:2.5; background:var(--accent)" onclick="openNewModal()">+ Add Habit</button>
+    </div>
+    <div id="habitList"></div>
+    <div id="archiveContainer"><button class="btn-ghost" style="width:100%" onclick="toggleArchiveVisibility()">📂 View Archive</button><div id="archivedHabitList" style="display:none; margin-top:15px;"></div></div>
+    <div class="sync-footer">
+        <button class="btn-ghost" onclick="exportData()">💾 Export</button>
+        <button class="btn-ghost" onclick="document.getElementById('importFile').click()">📂 Import</button>
+        <button class="btn" style="grid-column: span 2; background:var(--success); padding:18px" onclick="syncToCloud()">☁️ Sync to Cloud</button>
+        <input type="file" id="importFile" style="display:none" onchange="importData(event)">
+        <div id="syncStatus">Ready</div>
+        <button class="btn-ghost" style="grid-column: span 2; font-size:0.7rem; opacity:0.6;" onclick="resetCloudConfig()">Reset Connection</button>
+    </div>
+</div>
+
+<div id="modal-overlay" onclick="closeModal()" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:999; backdrop-filter: blur(8px);">
+    <div class="modal" id="habitModal" onclick="event.stopPropagation()" style="background:var(--card); padding:30px; border-radius:28px; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:88%; max-width:340px; border:1px solid var(--border);">
+        <h3 id="modalTitle" style="margin-top:0">Config</h3>
+        <input type="text" id="hName" placeholder="Habit Name" style="width:100%; padding:16px; margin-bottom:18px; border-radius:14px; border:1px solid var(--border); font-size:16px;">
+        <div style="display:flex; gap:12px;"><input type="number" id="hFreq" value="3" style="width:80px; padding:16px; border-radius:14px; border:1px solid var(--border); font-size:16px;"><select id="hUnit" style="flex:1; padding:16px; border-radius:14px; border:1px solid var(--border); font-size:16px;"><option value="day">/ day</option><option value="week">/ week</option><option value="month">/ month</option></select></div>
+        <button class="btn" id="saveBtn" style="width:100%; margin-top:25px;">Save Habit</button>
+    </div>
+</div>
+
+<script>
+    // 3. SECURE URL STORAGE (Variable instead of hardcoded string)
+    let CLOUD_URL = localStorage.getItem('habit_cloud_url');
+
+    let habits = JSON.parse(localStorage.getItem('pro_habit_os_v78')) || [];
+    let viewDate = new Date(), theme = localStorage.getItem('theme') || 'light';
+    let expandedId = null, activeNoteDate = null, showArchived = false, quarterMode = 0; 
+    document.body.setAttribute('data-theme', theme);
+
+    async function syncToCloud() {
+        const s = document.getElementById('syncStatus'); 
+        
+        // 4. PROMPT USER FOR URL IF MISSING
+        if (!CLOUD_URL) {
+            let input = prompt("Please paste your Google Script URL to enable cloud sync:");
+            if (input && input.startsWith("http")) {
+                CLOUD_URL = input.trim();
+                localStorage.setItem('habit_cloud_url', CLOUD_URL);
+            } else {
+                s.innerText = "❌ Sync Cancelled";
+                return;
+            }
+        }
+
+        s.innerText = "☁️ Syncing...";
+        try { 
+            await fetch(CLOUD_URL, { method: 'POST', body: JSON.stringify(habits) }); 
+            s.innerText = "☁️ Cloud Synced: " + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); 
+        } catch (e) { 
+            s.innerText = "❌ Sync Failed"; 
+        }
+    }
+
+    async function loadFromCloud() {
+        if (!CLOUD_URL) return; // Do not try to load if no URL is set
+        try { 
+            const res = await fetch(CLOUD_URL); 
+            const d = await res.json(); 
+            if (d && d.length > 0) { 
+                habits = d; 
+                render(); 
+                document.getElementById('syncStatus').innerText = "☁️ Data Restored"; 
+            } 
+        } catch (e) { console.log("Cloud Offline"); }
+    }
+
+    function resetCloudConfig() {
+        if(confirm("Disconnect this device from Google Cloud?")) {
+            localStorage.removeItem('habit_cloud_url');
+            CLOUD_URL = null;
+            document.getElementById('syncStatus').innerText = "Disconnected";
+            alert("Cloud URL removed. Data is now local only.");
+        }
+    }
+
+    function toggleTheme() { theme = (theme === 'light') ? 'dark' : 'light'; document.body.setAttribute('data-theme', theme); localStorage.setItem('theme', theme); }
+    function isFuture(dStr) { return dStr > new Date().toISOString().split('T')[0]; }
+
+    function getISOWeek(d) {
+        let t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+        t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7));
+        return Math.ceil((((t - new Date(Date.UTC(t.getUTCFullYear(), 0, 1))) / 86400000) + 1) / 7);
+    }
+
+    function calculatePercent(h, mKey) {
+        const hits = h.completions.filter(d => d.startsWith(mKey)).length;
+        if (hits === 0) return 0;
+        
+        let target;
+        if (h.unit === 'day') {
+            const year = parseInt(mKey.split('-')[0]);
+            const month = parseInt(mKey.split('-')[1]);
+            target = new Date(year, month, 0).getDate();
+        } else if (h.unit === 'week') {
+            target = h.freq * 4.34;
+        } else {
+            target = h.freq;
+        }
+        
+        return (hits / target) * 100; 
+    }
+
+    function cycleQuarterWindow() {
+        quarterMode = (quarterMode + 1) % 5;
+        const labels = ["Rolling 90D", "Q1 (Jan-Mar)", "Q2 (Apr-Jun)", "Q3 (Jul-Sep)", "Q4 (Oct-Dec)"];
+        document.getElementById('quarterLabel').innerText = labels[quarterMode]; render();
+    }
+
+    function renderDonut(p, sub) {
+        const r = 24, c = 2 * Math.PI * r, o = c - (Math.min(p, 100) / 100 * c);
+        const color = p >= 100 ? 'var(--success)' : (p >= 61 ? 'var(--light-success)' : 'var(--primary)');
+        return `<div class="donut-container"><svg class="donut-svg" viewBox="0 0 52 52"><circle cx="26" cy="26" r="${r}" fill="none" stroke="var(--border)" stroke-width="5"/><circle cx="26" cy="26" r="${r}" fill="none" stroke="${color}" stroke-width="5" stroke-dasharray="${c}" stroke-dashoffset="${o}" stroke-linecap="round"/></svg><div class="donut-label">${Math.round(p)}%<br><span style="font-size:0.4rem; opacity:0.8;">${sub}</span></div></div>`;
+    }
+
+    function renderTrend(h, yCount) {
+        const dataPoints = [];
+        const baseYear = viewDate.getFullYear();
+        const baseMonth = viewDate.getMonth();
+
+        for (let i = 5; i >= 0; i--) {
+            let targetDate = new Date(baseYear, baseMonth - i, 1);
+            let tYear = targetDate.getFullYear();
+            let tMonth = targetDate.getMonth() + 1;
+            const mKey = `${tYear}-${String(tMonth).padStart(2, '0')}`;
+            const label = targetDate.toLocaleString('default', { month: 'short' });
+            dataPoints.push({ label, val: Math.min(calculatePercent(h, mKey), 100) });
+        }
+
+        const w = 300, gh = 65, padY = 18;
+        const goalY = gh - (100 / 100 * (gh - padY)) - (padY/2);
+        const pts = dataPoints.map((m, i) => {
+            const x = (i * (w / (dataPoints.length - 1)));
+            const y = gh - (m.val / 100 * (gh - padY)) - (padY/2);
+            return `${x},${y}`;
+        }).join(' ');
+
+        const getPtColor = (v) => v >= 90 ? 'var(--success)' : (v >= 50 ? 'var(--light-success)' : 'var(--primary)');
+
+        return `
+            <div class="trend-box">
+                <div class="trend-header"><span>Monthly History</span><span>${baseYear} Total: ${yCount}</span></div>
+                <svg viewBox="0 -5 ${w} ${gh + 15}" style="width:100%; overflow:visible;">
+                    <line x1="0" y1="${goalY}" x2="${w}" y2="${goalY}" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3,3" opacity="0.3" />
+                    <polyline fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="${pts}" opacity="0.2" />
+                    ${dataPoints.map((m, i) => {
+                        const [px, py] = pts.split(' ')[i].split(',');
+                        return `
+                            <circle cx="${px}" cy="${py}" r="4" fill="${getPtColor(m.val)}" stroke="var(--card)" stroke-width="1.5" />
+                            <text x="${px}" y="${py - 8}" font-size="8" fill="${getPtColor(m.val)}" text-anchor="middle" font-weight="900">${Math.round(m.val)}%</text>
+                            <text x="${px}" y="${gh + 10}" font-size="8.5" fill="var(--subtext)" text-anchor="middle" font-weight="700">${m.label}</text>
+                        `;
+                    }).join('')}
+                </svg>
+            </div>
+        `;
+    }
+
+    function render() {
+        localStorage.setItem('pro_habit_os_v78', JSON.stringify(habits));
+        const vY = viewDate.getFullYear(), vM = viewDate.toISOString().slice(0, 7), active = habits.filter(h => !h.archived);
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
+        const mon = new Date(now); mon.setDate(now.getDate() - (now.getDay() || 7) + 1);
+        const liveWeekArr = [...Array(7)].map((_, i) => { let d = new Date(mon); d.setDate(mon.getDate() + i); return d.toISOString().split('T')[0]; });
+
+        document.getElementById('monthLabel').innerText = viewDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+        document.getElementById('monthScoreLabel').innerText = viewDate.toLocaleString('default', { month: 'short' }).toUpperCase();
+        document.getElementById('yearScoreLabel').innerText = vY;
+
+        let mTotal = 0, qTotal = 0, yTotal = 0;
+        active.forEach(h => {
+            mTotal += Math.min(calculatePercent(h, vM), 100);
+            let qMonths = [];
+            if (quarterMode === 0) {
+                for(let i=0; i<3; i++) {
+                    let d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                    qMonths.push(d.toISOString().slice(0, 7));
+                }
+            } else { 
+                let s = (quarterMode - 1) * 3; 
+                for(let i=0; i<3; i++) qMonths.push(new Date(vY, s + i, 1).toISOString().slice(0, 7)); 
+            }
+            qMonths.forEach(m => qTotal += Math.min(calculatePercent(h, m), 100) / 3);
+            for(let i=1; i<=12; i++) yTotal += Math.min(calculatePercent(h, `${vY}-${String(i).padStart(2,'0')}`), 100) / 12;
+        });
+
+        document.getElementById('monthScore').innerText = Math.round(mTotal/active.length || 0) + '%';
+        document.getElementById('quarterScore').innerText = Math.round(qTotal/active.length || 0) + '%';
+        document.getElementById('yearScore').innerText = Math.round(yTotal/active.length || 0) + '%';
+
+        const mapHabit = (h) => {
+            const isExp = expandedId === h.id ? 'expanded' : '';
+            const hits = h.completions.filter(d => liveWeekArr.includes(d) && d.startsWith(now.getFullYear().toString())).length;
+            
+            let targetW;
+            if (h.unit === 'day') targetW = 7;
+            else if (h.unit === 'week') targetW = h.freq;
+            else targetW = Math.ceil(h.freq / 4.34);
+            
+            const wP = (hits / targetW) * 100;
+            const mP = calculatePercent(h, vM);
+            
+            const lastDayOfViewedMonth = new Date(vY, viewDate.getMonth() + 1, 0).toISOString().split('T')[0];
+            const startOfYear = `${vY}-01-01`;
+            const yCompletionsInRange = h.completions.filter(d => d >= startOfYear && d <= lastDayOfViewedMonth);
+            const yHits = yCompletionsInRange.length;
+            
+            let targetY;
+            if (h.unit === 'day') targetY = (vY % 4 === 0 && (vY % 100 !== 0 || vY % 400 === 0)) ? 366 : 365;
+            else if (h.unit === 'week') targetY = h.freq * 52;
+            else targetY = h.freq * 12;
+
+            const yP = (yHits / targetY) * 100;
+
+            let calHTML = `<div class="day-label">Wk</div>` + ['M','T','W','T','F','S','S'].map(d=>`<div class="day-label">${d}</div>`).join('');
+            const dIM = new Date(vY, viewDate.getMonth() + 1, 0).getDate(), sI = (new Date(vY, viewDate.getMonth(), 1).getDay() || 7) - 1;
+            let cursor = 1;
+            for(let w=0; w<6; w++){
+                if (cursor > dIM) break;
+                calHTML += `<div style="font-size:0.55rem; text-align:center; opacity:0.6; padding-top:28px;">${getISOWeek(new Date(vY, viewDate.getMonth(), cursor))}</div>`;
+                for(let d=0; d<7; d++){
+                    if((w===0 && d<sI) || cursor > dIM) calHTML += `<div></div>`;
+                    else {
+                        const dStr = `${vM}-${String(cursor).padStart(2,'0')}`, isD = h.completions.includes(dStr), isP = h.planned?.includes(dStr);
+                        const isToday = dStr === todayStr;
+                        calHTML += `<div class="cal-day ${isD?'done':''} ${isP?'planned':''} ${isToday?'today':''}" onclick="handleCycle(${h.id}, '${dStr}', event)">
+                            <div class="tile-header"><span>${cursor}</span>${h.notes?.[dStr]?'<div class="note-indicator"></div>':''}<div class="add-note-btn" onclick="openNote(${h.id}, '${dStr}', event)">+</div></div>
+                            <div class="tile-body">${isD?'✓':''}</div>
+                        </div>`; cursor++;
+                    }
+                }
+            }
+            return `<div class="habit-item ${isExp}">
+                <div class="habit-summary" onclick="toggleExpand(${h.id})">
+                    <div>
+                        <strong style="font-size:1.1rem">${h.name}</strong>
+                        <div style="font-size:0.7rem; color:var(--subtext); margin-top:2px;">${h.freq} times / ${h.unit}</div>
+                    </div>
+                    <div class="donut-group">${renderDonut(wP, 'CUR WEEK')}${renderDonut(mP, 'MONTH')}${renderDonut(yP, 'YEAR')}</div>
+                </div>
+                <div class="habit-detail" onclick="event.stopPropagation()">
+                    ${renderTrend(h, yHits)}
+                    <div class="calendar-wrapper">${calHTML}</div>
+                    <div id="notes-${h.id}" class="notes-area">
+                        <span id="ts-${h.id}" style="font-size:0.75rem; color:var(--subtext); display:block; margin-bottom:12px"></span>
+                        <div id="view-${h.id}" style="margin-bottom:12px; font-size:1rem; line-height:1.5"></div>
+                        <textarea id="txt-${h.id}" style="display:none"></textarea>
+                        <div style="display:flex; gap:10px">
+                            <button class="btn" id="edit-btn-${h.id}" onclick="editMode(${h.id})">Edit Note</button>
+                            <button class="btn" id="save-btn-${h.id}" onclick="saveNote(${h.id})" style="display:none; background:var(--success)">Save</button>
+                            <button class="btn-ghost" onclick="closeNote(${h.id})">Close</button>
+                        </div>
+                    </div>
+                    <div class="action-bar">
+                        <button class="btn-ghost" style="flex:1" onclick="openEditModal(${h.id})">⚙️ Settings</button>
+                        <button class="btn-ghost" style="flex:1" onclick="toggleArchive(${h.id})">${h.archived ? 'Restore' : '📦 Archive'}</button>
+                        <button class="btn-ghost" onclick="deleteHabit(${h.id})" style="color:var(--danger)">🗑️</button>
+                    </div>
+                </div>
+            </div>`;
+        };
+        document.getElementById('habitList').innerHTML = habits.filter(h=>!h.archived).map(mapHabit).join('');
+        document.getElementById('archivedHabitList').innerHTML = habits.filter(h=>h.archived).map(mapHabit).join('');
+    }
+
+    function handleCycle(id, d, e) {
+        const h = habits.find(x => x.id === id);
+        const isD = h.completions.indexOf(d), isP = h.planned?.indexOf(d);
+        if(!h.planned) h.planned = [];
+        if (isFuture(d)) { isP === -1 ? h.planned.push(d) : h.planned.splice(isP, 1); }
+        else {
+            if (isP === -1 && isD === -1) { h.planned.push(d); }
+            else if (isP > -1 && isD === -1) { h.planned.splice(isP, 1); h.completions.push(d); }
+            else { h.completions.splice(isD, 1); }
+        }
+        render(); syncToCloud();
+    }
+
+    function openNote(id, d, e) { 
+        e.stopPropagation(); activeNoteDate = d; const h = habits.find(x => x.id === id); 
+        const area = document.getElementById(`notes-${id}`), view = document.getElementById(`view-${id}`), txt = document.getElementById(`txt-${id}`), ts = document.getElementById(`ts-${id}`); 
+        area.style.display = 'block'; 
+        if(h.notes?.[d]) { ts.innerText = `Updated: ${h.notes[d].updatedAt}`; view.style.display = 'block'; view.innerText = h.notes[d].text; txt.style.display = 'none'; document.getElementById(`edit-btn-${id}`).style.display = 'inline-block'; document.getElementById(`save-btn-${id}`).style.display = 'none'; } 
+        else { editMode(id); ts.innerText = 'New Note'; } 
+    }
+    function editMode(id) { 
+        const h = habits.find(x => x.id === id);
+        document.getElementById(`view-${id}`).style.display = 'none'; 
+        const txt = document.getElementById(`txt-${id}`); txt.style.display = 'block'; 
+        txt.value = h.notes?.[activeNoteDate]?.text || '';
+        txt.focus(); 
+        document.getElementById(`edit-btn-${id}`).style.display = 'none'; 
+        document.getElementById(`save-btn-${id}`).style.display = 'inline-block'; 
+    }
+    function saveNote(id) { 
+        const h = habits.find(x => x.id === id); if(!h.notes) h.notes = {}; 
+        const val = document.getElementById(`txt-${id}`).value; 
+        if(val) h.notes[activeNoteDate] = { text: val, updatedAt: new Date().toLocaleString() }; 
+        else delete h.notes[activeNoteDate]; 
+        render(); openNote(id, activeNoteDate, {stopPropagation:()=>{}}); syncToCloud(); 
+    }
+    function deleteNote(id) { 
+        if(confirm('Delete note?')) { 
+            const h = habits.find(x => x.id === id); delete h.notes[activeNoteDate]; 
+            render(); closeNote(id); syncToCloud(); 
+        } 
+    }
+    function closeNote(id) { document.getElementById(`notes-${id}`).style.display = 'none'; }
+    function toggleExpand(id) { expandedId = (expandedId === id) ? null : id; render(); }
+    function exportData() { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(habits)], {type:'application/json'})); a.download = 'habit_os.json'; a.click(); }
+    function importData(e) { const r = new FileReader(); r.onload = (ev) => { habits = JSON.parse(ev.target.result); render(); syncToCloud(); }; r.readAsText(e.target.files[0]); }
+    function closeModal() { document.getElementById('modal-overlay').style.display='none'; }
+    function deleteHabit(id) { if(confirm('Permanently delete?')) { habits = habits.filter(x => x.id !== id); render(); syncToCloud(); } }
+    function changeMonth(d) { viewDate.setMonth(viewDate.getMonth() + d); render(); }
+    function goToToday() { viewDate = new Date(); render(); }
+    function openNewModal() { document.getElementById('modalTitle').innerText = "Add Habit"; document.getElementById('modal-overlay').style.display='block'; document.getElementById('hName').value = ""; document.getElementById('hFreq').value = "1"; document.getElementById('saveBtn').onclick = () => { const n = document.getElementById('hName').value; if(n){ habits.push({id:Date.now(), name:n, freq:parseInt(document.getElementById('hFreq').value), unit:document.getElementById('hUnit').value, completions:[], planned:[], notes:{}, archived: false}); render(); closeModal(); syncToCloud(); } }; }
+    function openEditModal(id) { const h = habits.find(x => x.id === id); document.getElementById('modalTitle').innerText = "Edit Habit"; document.getElementById('hName').value = h.name; document.getElementById('hFreq').value = h.freq; document.getElementById('hUnit').value = h.unit; document.getElementById('modal-overlay').style.display='block'; document.getElementById('saveBtn').onclick = () => { h.name = document.getElementById('hName').value; h.freq = parseInt(document.getElementById('hFreq').value); h.unit = document.getElementById('hUnit').value; render(); closeModal(); syncToCloud(); }; }
+    function toggleArchive(id) { const h = habits.find(x => x.id === id); h.archived = !h.archived; render(); syncToCloud(); }
+    function toggleArchiveVisibility() { showArchived = !showArchived; document.getElementById('archivedHabitList').style.display = showArchived ? 'block' : 'none'; }
+    function runSearch() { const q = document.getElementById('globalSearch').value.toLowerCase(), p = document.getElementById('searchResults'); if (!q) { p.style.display = 'none'; return; } let found = []; habits.forEach(h => { if(h.notes) Object.keys(h.notes).forEach(d => { if(h.notes[d].text.toLowerCase().includes(q)) found.push(`<strong>${d} [${h.name}]:</strong> ${h.notes[d].text}`); })}); p.innerHTML = found.length ? found.join('<br><hr style="opacity:0.1">') : 'No notes found.'; p.style.display = 'block'; }
+    loadFromCloud();
+    render();
+</script>
+</body>
+</html>
